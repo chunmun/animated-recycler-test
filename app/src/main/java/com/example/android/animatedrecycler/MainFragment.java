@@ -1,5 +1,6 @@
 package com.example.android.animatedrecycler;
 
+import android.animation.TimeInterpolator;
 import android.content.Context;
 import android.graphics.Color;
 import android.net.Uri;
@@ -9,9 +10,14 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.Interpolator;
+import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
@@ -37,7 +43,6 @@ public class MainFragment extends Fragment {
     private RecyclerView.ViewHolder mViewHolder;
     private RecyclerViewAdapter mAdapter;
     private LinearLayoutManager mLayoutManager;
-    private RecyclerView.ItemAnimator mRecyclerItemAnimator;
 
     private OnFragmentInteractionListener mListener;
 
@@ -76,65 +81,79 @@ public class MainFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        mLayoutManager = new LinearLayoutManager(getContext());
+
         // Inflate the layout for this fragment
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-        mRecyclerView =(RecyclerView) rootView.findViewById(R.id.recycler_view);
+        mRecyclerView = (RecyclerView) rootView.findViewById(R.id.recycler_view);
         mRecyclerView.setHasFixedSize(true);
-        mRecyclerItemAnimator = new RecyclerView.ItemAnimator() {
-            @Override
-            public boolean animateDisappearance(@NonNull RecyclerView.ViewHolder viewHolder, @NonNull ItemHolderInfo preLayoutInfo, @Nullable ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-
-            @Override
-            public boolean animateAppearance(@NonNull RecyclerView.ViewHolder viewHolder, @Nullable ItemHolderInfo preLayoutInfo, @NonNull ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-
-            @Override
-            public boolean animatePersistence(@NonNull RecyclerView.ViewHolder viewHolder, @NonNull ItemHolderInfo preLayoutInfo, @NonNull ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-
-            @Override
-            public boolean animateChange(@NonNull RecyclerView.ViewHolder oldHolder, @NonNull RecyclerView.ViewHolder newHolder, @NonNull ItemHolderInfo preLayoutInfo, @NonNull ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-
-            @Override
-            public void runPendingAnimations() {
-
-            }
-
-            @Override
-            public void endAnimation(RecyclerView.ViewHolder item) {
-
-            }
-
-            @Override
-            public void endAnimations() {
-
-            }
-
-            @Override
-            public boolean isRunning() {
-                return false;
-            }
-        };
-        mLayoutManager = new LinearLayoutManager(getContext());
         mRecyclerView.setLayoutManager(mLayoutManager);
+
         mAdapter = new RecyclerViewAdapter();
         mRecyclerView.setAdapter(mAdapter);
+        mRecyclerView.startLayoutAnimation();
+        mRecyclerView.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(View view) {
+                Log.d("[Test] onChildViewAttachedToWindow", view.toString());
+            }
+
+            @Override
+            public void onChildViewDetachedFromWindow(View view) {
+                Log.d("[Test] onChildViewDetachedFromWindow", view.toString());
+
+            }
+        });
+        LayoutAnimationController controller = mRecyclerView.getLayoutAnimation();
+
+
+        mRecyclerView.setLayoutAnimation(
+
+                new MyLayoutAnimationController(
+                        controller.getAnimation(),
+                        controller.getDelay()
+                )
+        );
+        mRecyclerView.addOnLayoutChangeListener(
+                new View.OnLayoutChangeListener() {
+                    @Override
+                    public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                        View child = ((RecyclerView) v).getChildAt(0);
+                        Log.d("[Test] onLayoutChange", v.toString());
+
+                    }
+                }
+
+        );
         return rootView;
     }
+
+    public static class MyLayoutAnimationController extends LayoutAnimationController {
+
+
+        public MyLayoutAnimationController(Animation animation, float delay) {
+            super(animation, delay);
+        }
+
+        @Override
+        protected int getTransformedIndex(AnimationParameters params) {
+            if (params.index <= 1) {
+                return 0;
+            }
+            return params.index;
+        }
+    }
+
 
     public static class MyViewHolder extends RecyclerView.ViewHolder {
 
         public ImageView mImageView;
+        public int index;
 
-        public MyViewHolder(ImageView itemView) {
+        public MyViewHolder(ImageView itemView, int index) {
             super(itemView);
             mImageView = itemView;
+            this.index = index;
         }
     }
 
@@ -146,7 +165,7 @@ public class MainFragment extends Fragment {
         public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             ImageView imageView = (ImageView) LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.view_item, parent, false);
-            return new MyViewHolder(imageView);
+            return new MyViewHolder(imageView, viewType);
         }
 
         @Override
